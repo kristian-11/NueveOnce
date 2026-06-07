@@ -54,14 +54,32 @@ Resumen
 - Proyecto Flask que clasifica síntomas según reglas ESI estrictas.
 - El backend puede usar Groq (LLM) para re-evaluar tras preguntas de follow-up si `USE_GROQ=true`.
 
-Variables de entorno (.env)
-- `USE_GROQ=true` — habilita la llamada al modelo Groq en la re-evaluación (ya está por defecto).
-- `GROQ_API_KEY` — clave de la API Groq (dejar vacío para no usar Groq).
-- `GROQ_MODEL` — modelo a usar (por defecto `llama-3.3-70b-versatile`).
-- `PORT`, `DEBUG` — puerto y modo debug.
+# NueveOnce - Triage ESI
 
-Instalación y ejecución (Windows Powershell)
-1. Crear y activar un virtualenv (si no existe):
+Resumen
+- Proyecto Flask que clasifica síntomas según reglas ESI (Emergency Severity Index).
+- Soporta re-evaluación opcional con Groq (LLM) tras preguntas de follow-up si `USE_GROQ=true`.
+
+Requisitos
+- Python 3.10+
+- (Opcional) Redis para caché
+
+Instalación (Linux/macOS)
+1. Crear y activar virtualenv:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+2. Instalar dependencias:
+
+```bash
+pip install -r nueveonce/requirements.txt
+```
+
+Instalación (Windows PowerShell)
+1. Crear y activar virtualenv:
 
 ```powershell
 python -m venv .venv
@@ -74,38 +92,52 @@ python -m venv .venv
 pip install -r nueveonce/requirements.txt
 ```
 
-3. Editar `.env` en `nueveonce/.env` para añadir `GROQ_API_KEY` si quieres usar Groq.
+Variables de entorno (recomendadas)
+- `DATABASE_URL` — por ejemplo `sqlite:///./nueveonce.db` o una URL PostgreSQL.
+- `USE_REDIS`=1 y `REDIS_URL` si quieres habilitar caching.
+- `USE_GROQ`=1 y `GROQ_API_KEY` para usar Groq.
+- `MAX_OUTPUT_TOKENS` para limitar la cantidad de tokens que aceptamos del LLM.
 
-4. Ejecutar la aplicación:
+Inicializar la base de datos (local)
 
-```powershell
-# desde la carpeta del workspace
-.\.venv\Scripts\python.exe nueveonce/app.py
+```bash
+python nueveonce/scripts/init_db.py
 ```
 
-Pruebas rápidas (Powershell)
-- Registrar paciente:
+Ejecutar la aplicación (desarrollo)
 
-```powershell
-$body = @{nombre='test'} | ConvertTo-Json -Compress
-Invoke-RestMethod -Uri 'http://127.0.0.1:5000/api/patient' -Method Post -Body $body -ContentType 'application/json'
+```bash
+python nueveonce/app.py
 ```
 
-- Enviar triage:
+Ejecutar tests
 
-```powershell
-$body = @{sintomas='dolor pecho'; paciente_id=''} | ConvertTo-Json -Compress
-Invoke-RestMethod -Uri 'http://127.0.0.1:5000/api/triage' -Method Post -Body $body -ContentType 'application/json' | ConvertTo-Json -Depth 6
+```bash
+pytest -q
 ```
 
-- Responder follow-up (usar `session_id` devuelto):
+Endpoints principales
+- `POST /api/triage` — responde con clasificación JSON.
+- `POST /api/triage_stream` — streaming SSE (Server-Sent Events) para respuestas incrementales.
 
-```powershell
-$body = @{session_id='<SESSION_ID>'; answer='si'} | ConvertTo-Json -Compress
-Invoke-RestMethod -Uri 'http://127.0.0.1:5000/api/triage/answer' -Method Post -Body $body -ContentType 'application/json'
-```
+Despliegue en Vercel
+- Este repositorio incluye `vercel.json` para una configuración básica con `@vercel/python`.
+- Pasos rápidos:
+	1. Conectar el repositorio en Vercel (GitHub integration).
+	2. Asegurarte que la variable de entorno `GROQ_API_KEY` se guarda en el dashboard de Vercel (si la usas).
+	3. Vercel detectará `vercel.json` y construirá el proyecto; el endpoint expuesto será el que declare `routes`.
+- Nota: También hay un `Procfile` para despliegues alternativos con Gunicorn.
 
-Notas
-- El sistema prioriza `ESI_RULES` (clasificación por palabras clave). Cuando `USE_GROQ=true` y `GROQ_API_KEY` esté definida, Groq se consultará tras completar los follow-ups y su salida será aceptada sólo si contiene una coincidencia con las palabras clave (evita alucinaciones).
-- Revisa `nueveonce/app.py` para cambiar la lógica o los criterios de verificación si necesitas mayor/menor sensibilidad.
->>>>>>> origin/main
+Seguridad y producción
+- Use PostgreSQL en `DATABASE_URL` y ajuste `DB_POOL_SIZE`/`DB_MAX_OVERFLOW` según carga.
+- No cachee información sensible en Redis sin cifrado/TTL apropiado.
+- Controle `MAX_OUTPUT_TOKENS` y valide estrictamente la salida del LLM con `nueveonce/schemas.py`.
+
+Notas técnicas
+- El sistema prioriza reglas ESI (`ESI_RULES`) basado en palabras clave; Groq se usa sólo como re-evaluación y su salida se valida contra el esquema esperado para evitar alucinaciones.
+
+Contribuyendo
+- Crear una rama, abrir un PR hacia `main`, y la CI ejecutará tests en la rama `feature/refactor-llm-optimizations`.
+
+Licencia
+- (Añade la licencia si lo deseas)
