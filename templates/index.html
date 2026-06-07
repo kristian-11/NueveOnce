@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nueve9nce - Triaje Médico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        #chat::-webkit-scrollbar { width: 5px; }
+        #chat::-webkit-scrollbar-track { background: #f1f5f9; }
+        #chat::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .msg { animation: slideUp 0.25s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .pulse-dot { animation: pulse 1.2s infinite; }
+        .bounce-delay-1 { animation-delay: 0s; }
+        .bounce-delay-2 { animation-delay: 0.2s; }
+        .bounce-delay-3 { animation-delay: 0.4s; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
+
+    <!-- ===== REGISTRO ===== -->
+    <div id="reg-screen" class="min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">
+            <div class="bg-gradient-to-r from-red-600 to-red-700 p-6 text-center">
+                <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-3">🏥</div>
+                <h1 class="text-white text-xl font-bold">Nueve9nce</h1>
+                <p class="text-red-200 text-sm">Sistema de clasificación ESI</p>
+            </div>
+            <div class="p-6">
+                <h2 class="text-lg font-bold text-slate-800 mb-1">Registro del paciente</h2>
+                <p class="text-xs text-slate-400 mb-5">Ingresa tus datos para comenzar</p>
+                <form id="reg-form">
+                    <div class="space-y-3">
+                        <input id="reg-nombre" type="text" placeholder="Nombre completo *" required class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent text-sm">
+                        <input id="reg-edad" type="number" placeholder="Edad" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent text-sm">
+                        <input id="reg-telefono" type="tel" placeholder="Teléfono" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent text-sm">
+                        <input id="reg-direccion" type="text" placeholder="Dirección" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent text-sm">
+                    </div>
+                    <p id="reg-error" class="text-red-600 text-xs mt-2 hidden"></p>
+                    <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 rounded-xl mt-4 transition-all text-sm">Comenzar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== CHAT ===== -->
+    <div id="app-screen" class="hidden max-w-lg mx-auto px-4 py-6 min-h-screen flex flex-col">
+        <div class="bg-gradient-to-r from-red-600 to-red-700 rounded-2xl p-5 flex items-center gap-4 shadow-lg mb-4">
+            <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center text-2xl shrink-0">🏥</div>
+            <div class="min-w-0 flex-1">
+                <h1 class="text-white text-xl font-bold">Nueve9nce</h1>
+                <p id="header-name" class="text-red-200 text-sm truncate"></p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="toggleSessions()" class="text-white/80 hover:text-white text-lg px-1" title="Mis consultas">📋</button>
+                <button onclick="switchPatient()" class="text-white/80 hover:text-white text-lg px-1" title="Nuevo paciente">🔄</button>
+            </div>
+        </div>
+
+        <div id="chat" class="flex-1 overflow-y-auto space-y-3 pr-1 mb-4">
+            <div class="flex items-start gap-3 msg">
+                <div class="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center text-sm shrink-0">🤖</div>
+                <div class="bg-white rounded-2xl rounded-tl-none px-4 py-3 shadow-sm max-w-[85%]">
+                    <p class="text-slate-700 text-sm leading-relaxed">Hola 👋 Describe tus <strong>síntomas</strong> y te clasificaré según el sistema ESI.</p>
+                    <p class="text-xs text-slate-400 mt-1.5">Ej: "Dolor en el pecho y me cuesta respirar"</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="result" class="hidden mb-4 msg rounded-xl overflow-hidden border shadow-lg">
+            <div id="result-header" class="p-4 flex items-center gap-3 text-white font-bold text-sm"></div>
+            <div class="p-4 bg-white space-y-3">
+                <div class="flex gap-3">
+                    <div class="flex-1 bg-slate-50 rounded-xl p-3 text-center">
+                        <p class="text-[10px] text-slate-400 uppercase tracking-widest">Nivel ESI</p>
+                        <p id="r-nivel" class="text-2xl font-black mt-1"></p>
+                    </div>
+                    <div class="flex-1 bg-slate-50 rounded-xl p-3 text-center">
+                        <p class="text-[10px] text-slate-400 uppercase tracking-widest">Tiempo</p>
+                        <p id="r-tiempo" class="text-sm font-bold mt-1"></p>
+                    </div>
+                </div>
+                <div class="bg-slate-50 rounded-xl p-3">
+                    <p class="text-[10px] text-slate-400 uppercase tracking-widest">Canal</p>
+                    <p id="r-canal" class="font-bold text-sm mt-0.5"></p>
+                </div>
+                <div id="r-justificacion" class="bg-slate-50 rounded-xl p-3 text-xs text-slate-600 leading-relaxed"></div>
+                <button onclick="resetChat()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2.5 rounded-xl transition-all text-sm">Nueva consulta</button>
+            </div>
+        </div>
+
+        <div id="loading" class="hidden mb-4 msg">
+            <div class="bg-white rounded-2xl px-5 py-4 shadow-sm flex items-center gap-3">
+                <div class="flex gap-1.5">
+                    <span class="w-2.5 h-2.5 bg-red-500 rounded-full pulse-dot bounce-delay-1"></span>
+                    <span class="w-2.5 h-2.5 bg-red-500 rounded-full pulse-dot bounce-delay-2"></span>
+                    <span class="w-2.5 h-2.5 bg-red-500 rounded-full pulse-dot bounce-delay-3"></span>
+                </div>
+                <span class="text-slate-500 text-sm">Clasificando con Groq AI...</span>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-200">
+            <form id="form" class="flex gap-2">
+                <input id="input" type="text" placeholder="Describe tus síntomas..." class="flex-1 px-4 py-2.5 rounded-xl border-0 focus:outline-none focus:ring-0 text-sm bg-transparent">
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl font-medium transition-all text-sm flex items-center gap-1.5 shrink-0">
+                    <span>Enviar</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </button>
+            </form>
+        </div>
+        <p class="text-[11px] text-slate-400 text-center mt-2">⏐ Emergencia → llama al 911 ⏐</p>
+    </div>
+
+    <!-- ===== MIS CONSULTAS ===== -->
+    <div id="sessions-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl">
+            <div class="flex items-center justify-between p-5 border-b border-slate-100">
+                <h2 class="font-bold text-slate-800">📋 Mis consultas</h2>
+                <button onclick="toggleSessions()" class="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4">
+                <table class="w-full text-sm">
+                    <thead><tr class="text-[10px] uppercase text-slate-400 border-b border-slate-100">
+                        <th class="text-left pb-2 font-medium">Hora</th>
+                        <th class="text-left pb-2 font-medium">Síntomas</th>
+                        <th class="text-center pb-2 font-medium">Nivel</th>
+                        <th class="text-center pb-2 font-medium">Estado</th>
+                    </tr></thead>
+                    <tbody id="sessions-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ESI = {
+            1: { icon: '🚑', label: 'N1', color: '#EF4444', bg: '#FEE2E2' },
+            2: { icon: '👨‍⚕️', label: 'N2', color: '#F59E0B', bg: '#FEF3C7' },
+            3: { icon: '📹', label: 'N3', color: '#10B981', bg: '#D1FAE5' },
+        };
+
+        const API = window.location.origin;
+
+        // Filter-question strict state (client-side)
+        let inFollowUp = false;
+        let followUpSessionId = null;
+        let preguntaState = { activo: false, nivel: null, paso: 0, max: 0 };
+
+        // Preguntas por defecto (serán sobrescritas por las preguntas del servidor cuando existan)
+        const preguntas = {
+            1: [
+                "¿La persona está consciente? (sí/no)",
+                "¿Respira normalmente o presenta dificultad respiratoria? (sí/no)",
+            ],
+            2: [
+                "¿Qué temperatura aproximada tiene? (ej: 39°C)",
+                "¿Presenta vómitos o diarrea persistente? (sí/no)",
+            ],
+            3: [
+                "¿Cuánto tiempo lleva con estos síntomas? (ej: 2 días)",
+                "¿Presenta fiebre actualmente? (sí/no)",
+                "¿Afectan los síntomas su actividad diaria? (sí/no)",
+            ],
+        };
+
+        function filtrarPregunta(nivel, respuesta) {
+            if (!preguntaState.activo) {
+                preguntaState = { activo: true, nivel: nivel, paso: 0, max: nivel === 1 ? 2 : 3 };
+                return { accion: "preguntar", texto: preguntas[nivel][0] };
+            }
+
+            preguntaState.paso++;
+
+            if (preguntaState.paso >= preguntaState.max) {
+                preguntaState.activo = false;
+                const canal = nivel === 1 ? "ambulancia" : nivel === 2 ? "medico_domicilio" : "telemedicina";
+                return { accion: "derivar", canal: canal };
+            }
+
+            return { accion: "preguntar", texto: preguntas[nivel][preguntaState.paso] };
+        }
+
+        // --- Registro ---
+        document.getElementById('reg-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nombre = document.getElementById('reg-nombre').value.trim();
+            const edad = document.getElementById('reg-edad').value.trim();
+            const telefono = document.getElementById('reg-telefono').value.trim();
+            const direccion = document.getElementById('reg-direccion').value.trim();
+
+            if (!nombre) return;
+
+            try {
+                const r = await fetch(API + '/api/patient', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombre, edad, telefono, direccion }),
+                });
+                const d = await r.json();
+                if (!r.ok) { document.getElementById('reg-error').textContent = d.error; document.getElementById('reg-error').classList.remove('hidden'); return; }
+
+                localStorage.setItem('triage_paciente', JSON.stringify(d));
+                enterApp(d);
+            } catch {
+                document.getElementById('reg-error').textContent = 'Error de conexión';
+                document.getElementById('reg-error').classList.remove('hidden');
+            }
+        });
+
+        function enterApp(paciente) {
+            document.getElementById('reg-screen').classList.add('hidden');
+            document.getElementById('app-screen').classList.remove('hidden');
+            document.getElementById('header-name').textContent = '👤 ' + paciente.nombre + (paciente.edad ? ' · ' + paciente.edad + ' años' : '');
+            document.getElementById('chat').innerHTML =
+                '<div class="flex items-start gap-3 msg">' +
+                '<div class="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center text-sm shrink-0">🤖</div>' +
+                '<div class="bg-white rounded-2xl rounded-tl-none px-4 py-3 shadow-sm max-w-[85%]">' +
+                '<p class="text-slate-700 text-sm leading-relaxed">Bienvenido, <strong>' + paciente.nombre + '</strong>. Describe tus <strong>síntomas</strong> para recibir clasificación ESI.</p>' +
+                '<p class="text-xs text-slate-400 mt-1.5">Ej: "Dolor en el pecho y me cuesta respirar"</p>' +
+                '</div></div>';
+            document.getElementById('input').focus();
+        }
+
+        // --- Auto-login si ya está registrado ---
+        (function init() {
+            const stored = localStorage.getItem('triage_paciente');
+            if (stored) {
+                try { enterApp(JSON.parse(stored)); } catch { localStorage.removeItem('triage_paciente'); }
+            }
+        })();
+
+        // --- Triage ---
+        document.getElementById('form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            addMessage(text, 'user');
+            input.value = '';
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('result').classList.add('hidden');
+
+            const paciente = JSON.parse(localStorage.getItem('triage_paciente') || '{}');
+
+            try {
+                if (!inFollowUp) {
+                    const res = await fetch(API + '/api/triage', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sintomas: text, paciente_id: paciente.paciente_id || '' }),
+                    });
+                    const data = await res.json();
+                    document.getElementById('loading').classList.add('hidden');
+                    if (data.error) { addMessage('⚠️ ' + data.error, 'bot'); return; }
+                    showResult(data);
+                    // iniciar preguntas de filtro si las hay: sincronizamos las preguntas del servidor
+                    if (data.follow_up_questions && data.follow_up_questions.length) {
+                        startFollowUps(data);
+                    }
+                } else {
+                        // En modo follow-up: enviar la respuesta al backend para registro y
+                        // dejar que el backend decida el siguiente paso (siguiente pregunta o derivación).
+                        try {
+                            const res = await fetch(API + '/api/triage/answer', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ session_id: followUpSessionId, answer: text }),
+                            });
+                            const payload = await res.json();
+                            document.getElementById('loading').classList.add('hidden');
+                            if (payload.error) { addMessage('⚠️ ' + payload.error, 'bot'); return; }
+
+                            // Mostrar que la respuesta fue registrada
+                            addMessage('✅ Respuesta registrada', 'bot');
+
+                            if (!payload.done) {
+                                // Backend devuelve la siguiente pregunta
+                                const nextQ = payload.next_question || (payload.session && payload.session.follow_up_questions && payload.session.follow_up_questions[payload.session.follow_up_index] ) || null;
+                                if (nextQ) addMessage(nextQ, 'bot');
+                            } else {
+                                // flujo completo: backend ya re-evaluó y actualizó la sesión
+                                const session = payload.session || {};
+                                    // Mostrar la tarjeta de resultado (icono / color) igual que en la clasificación inicial
+                                    showResult(session);
+                                    // Mensaje adicional breve
+                                    addMessage('🔔 Derivación procesada: ' + (session.canal === 'ambulancia' ? 'Ambulancia medicalizada' : session.canal === 'medico_domicilio' ? 'Médico a domicilio' : 'Telemedicina'), 'bot');
+                                    inFollowUp = false;
+                                    followUpSessionId = null;
+                                    preguntaState = { activo: false, nivel: null, paso: 0, max: 0 };
+                            }
+                        } catch (e) {
+                            document.getElementById('loading').classList.add('hidden');
+                            console.warn('Registro follow-up falló', e);
+                            addMessage('⚠️ Error registrando respuesta. Intenta de nuevo.', 'bot');
+                        }
+                }
+            } catch {
+                document.getElementById('loading').classList.add('hidden');
+                addMessage('⚠️ Error de conexión. Intenta de nuevo.', 'bot');
+            }
+        });
+
+        function startFollowUps(sessionData) {
+            // sessionData debe contener session_id y follow_up_questions
+            followUpSessionId = sessionData.session_id || sessionData.sessionId || null;
+            if (!followUpSessionId) return;
+            inFollowUp = true;
+            // Sobrescribimos las preguntas locales con las provistas por el servidor
+            if (sessionData.follow_up_questions && sessionData.follow_up_questions.length) {
+                preguntas[sessionData.nivel] = sessionData.follow_up_questions;
+            }
+            // inicializamos el estado de filtrado estricto
+            preguntaState = { activo: true, nivel: sessionData.nivel, paso: 0, max: sessionData.nivel === 1 ? preguntas[1].length : preguntas[sessionData.nivel].length };
+            const q = (preguntas[sessionData.nivel] && preguntas[sessionData.nivel].length) ? preguntas[sessionData.nivel][0] : null;
+            if (q) {
+                setTimeout(() => addMessage(q, 'bot'), 600);
+            }
+        }
+
+        function addMessage(text, type) {
+            const chat = document.getElementById('chat');
+            const div = document.createElement('div');
+            div.className = 'flex items-start gap-3 msg ' + (type === 'user' ? 'flex-row-reverse' : '');
+            const avatar = document.createElement('div');
+            avatar.className = 'w-9 h-9 rounded-full flex items-center justify-center text-sm shrink-0 bg-red-100';
+            avatar.textContent = type === 'user' ? '👤' : '🤖';
+            const bubble = document.createElement('div');
+            bubble.className = type === 'user'
+                ? 'bg-red-600 text-white rounded-2xl rounded-tr-none px-4 py-3 shadow-sm max-w-[85%]'
+                : 'bg-white rounded-2xl rounded-tl-none px-4 py-3 shadow-sm max-w-[85%]';
+            bubble.innerHTML = '<p class="text-sm leading-relaxed ' + (type === 'user' ? 'text-white' : 'text-slate-700') + '">' + text + '</p>';
+            if (type === 'user') { div.append(bubble, avatar); } else { div.append(avatar, bubble); }
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        function showResult(d) {
+            const e = ESI[d.nivel] || ESI[3];
+            const h = document.getElementById('result-header');
+            h.innerHTML = '<span class="text-2xl">' + e.icon + '</span> ' + d.categoria;
+            h.style.backgroundColor = e.color;
+            document.getElementById('result').classList.remove('hidden');
+            document.getElementById('result').classList.add('msg');
+            document.getElementById('r-nivel').textContent = 'Nivel ' + d.nivel;
+            document.getElementById('r-nivel').style.color = e.color;
+            document.getElementById('r-tiempo').innerHTML = d.tiempo_minutos <= 1 ? '⬇ < 1 min' : d.tiempo_minutos >= 1440 ? '⬆ < 24 h' : '⬆ ' + (d.tiempo_minutos/60) + ' h';
+            document.getElementById('r-canal').textContent = e.icon + ' ' + (d.canal === 'ambulancia' ? 'Ambulancia medicalizada' : d.canal === 'medico_domicilio' ? 'Médico a domicilio' : 'Telemedicina');
+            document.getElementById('r-justificacion').innerHTML = '💬 <strong>Justificación:</strong> ' + d.justificacion + (d.fuente === 'keyword' ? '<br><span class="text-slate-400">(clasificación por palabras clave)</span>' : '');
+            addMessage('🔍 ' + d.categoria + ' · ' + e.icon + ' ' + (d.canal === 'ambulancia' ? 'Ambulancia' : d.canal === 'medico_domicilio' ? 'Médico domicilio' : 'Telemedicina'), 'bot');
+        }
+
+        function resetChat() {
+            document.getElementById('result').classList.add('hidden');
+            document.getElementById('input').value = '';
+            document.getElementById('input').focus();
+        }
+
+        // --- Mis consultas ---
+        function toggleSessions() {
+            const modal = document.getElementById('sessions-modal');
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden')) loadSessions();
+        }
+
+        async function loadSessions() {
+            const paciente = JSON.parse(localStorage.getItem('triage_paciente') || '{}');
+            if (!paciente.paciente_id) return;
+            try {
+                const res = await fetch(API + '/api/sessions?paciente_id=' + paciente.paciente_id);
+                const data = await res.json();
+                const s = data.sesiones || [];
+                const tbody = document.getElementById('sessions-tbody');
+                if (!s.length) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-slate-400 py-8 text-sm">Sin consultas</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = s.map(x => {
+                    const e = ESI[x.nivel] || ESI[3];
+                    const ec = x.estado === 'pendiente' ? 'bg-yellow-100 text-yellow-700' : x.estado === 'en_curso' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700';
+                    return '<tr class="border-b border-slate-50">' +
+                        '<td class="py-2.5 pr-2 text-xs text-slate-500">' + new Date(x.timestamp).toLocaleTimeString() + '</td>' +
+                        '<td class="py-2.5 pr-2 text-sm text-slate-500 truncate max-w-[200px]" title="' + (x.sintomas || '') + '">' + (x.sintomas || '') + '</td>' +
+                        '<td class="py-2.5 text-center"><span class="text-xs font-bold px-2 py-1 rounded-full" style="background:' + e.bg + ';color:' + e.color + '">' + e.label + '</span></td>' +
+                        '<td class="py-2.5 text-center"><span class="text-xs px-2 py-1 rounded-full ' + ec + '">' + x.estado + '</span></td>' +
+                        '</tr>';
+                }).join('');
+            } catch {}
+        }
+
+        function switchPatient() {
+            if (confirm('¿Registrar un nuevo paciente? Se cerrará la sesión actual.')) {
+                localStorage.removeItem('triage_paciente');
+                document.getElementById('app-screen').classList.add('hidden');
+                document.getElementById('reg-screen').classList.remove('hidden');
+                document.getElementById('reg-form').reset();
+                document.getElementById('reg-error').classList.add('hidden');
+                document.getElementById('chat').innerHTML =
+                    '<div class="flex items-start gap-3 msg">' +
+                    '<div class="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center text-sm shrink-0">🤖</div>' +
+                    '<div class="bg-white rounded-2xl rounded-tl-none px-4 py-3 shadow-sm max-w-[85%]">' +
+                    '<p class="text-slate-700 text-sm leading-relaxed">Hola 👋 Describe tus <strong>síntomas</strong> y te clasificaré según el sistema ESI.</p>' +
+                    '<p class="text-xs text-slate-400 mt-1.5">Ej: "Dolor en el pecho y me cuesta respirar"</p>' +
+                    '</div></div>';
+                document.getElementById('result').classList.add('hidden');
+            }
+        }
+
+        document.querySelectorAll('.fixed').forEach(m => {
+            m.addEventListener('click', (e) => { if (e.target === m) m.classList.add('hidden'); });
+        });
+    </script>
+</body>
+</html>
