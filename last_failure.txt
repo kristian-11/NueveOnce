@@ -1,0 +1,30 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.14.3, pytest-9.0.3, pluggy-1.6.0 -- D:\nueveonce\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: D:\nueveonce
+configfile: pytest.ini
+plugins: anyio-4.13.0
+collecting ... collected 7 items
+
+nueveonce/tests/test_app.py::test_triage_endpoint PASSED                 [ 14%]
+nueveonce/tests/test_app.py::test_triage_stream_endpoint PASSED          [ 28%]
+nueveonce/tests/test_triage_flow.py::test_convulsion_flow PASSED         [ 42%]
+nueveonce/tests/test_triage_flow.py::test_dolor_pecho_disnea_flow PASSED [ 57%]
+nueveonce/tests/test_triage_flow.py::test_fiebre_alta_flow PASSED        [ 71%]
+nueveonce/tests/test_triage_flow.py::test_caida_anciano_flow PASSED      [ 85%]
+nueveonce/tests/test_triage_flow.py::test_telemedicina_flow FAILED       [100%]
+
+================================== FAILURES ===================================
+___________________________ test_telemedicina_flow ____________________________
+nueveonce\tests\test_triage_flow.py:74: in test_telemedicina_flow
+    assert final['nivel'] == 3
+E   assert None == 3
+============================== warnings summary ===============================
+.venv\Lib\site-packages\pydantic\typing.py:400: 12 warnings
+  D:\nueveonce\.venv\Lib\site-packages\pydantic\typing.py:400: DeprecationWarning: Failing to pass a value to the 'type_params' parameter of 'typing._eval_type' is deprecated, as it leads to incorrect behaviour when calling typing._eval_type on a stringified annotation that references a PEP 695 type parameter. It will be disallowed in Python 3.15.
+    value = _eval_type(value, base_globals, None)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED nueveonce/tests/test_triage_flow.py::test_telemedicina_flow - assert N...
+================== 1 failed, 6 passed, 12 warnings in 0.82s ===================
